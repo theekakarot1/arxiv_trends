@@ -41,7 +41,10 @@ from collections import defaultdict
 
 import nest_asyncio
 from dotenv import load_dotenv
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_text_splitters import (
+    MarkdownHeaderTextSplitter,
+    RecursiveCharacterTextSplitter,
+)
 from neo4j import GraphDatabase, exceptions
 from sentence_transformers import SentenceTransformer
 
@@ -58,11 +61,19 @@ NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 # all-MiniLM-L6-v2 produces 384-dimensional embeddings.
 embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 
-# Chunk parameters (validated in notebooks/chunk_size_analysis.ipynb).
-# Summary: 1 500-char chunks with 200-char overlap maximises answer faithfulness
-# on a 50-question QA probe while keeping p95 retrieval latency under 120 ms.
+# Chunk parameters — update these after running notebooks/chunk_size_analysis.ipynb.
+# These values are the final size/overlap applied WITHIN each section after
+# the markdown header splitter has already separated the paper into sections.
 CHUNK_SIZE    = 1_500
 CHUNK_OVERLAP = 200
+
+# Markdown headers that signal a new logical section in arXiv papers.
+# pymupdf4llm renders section titles as ## and subsection titles as ###.
+_HEADERS_TO_SPLIT = [
+    ("#",   "section"),
+    ("##",  "section"),
+    ("###", "subsection"),
+]
 
 
 # ---------------------------------------------------------------------------
@@ -104,28 +115,69 @@ def run_cypher_query(driver, query: str, parameters: dict | None = None):
 # ---------------------------------------------------------------------------
 
 def create_chunks(doc_list: list[list]) -> list:
-    """Split paper documents into overlapping text chunks for vector search.
+    """Split papers into section-aware, overlapping chunks for vector search.
 
-    Chunk parameters (CHUNK_SIZE=1500, CHUNK_OVERLAP=200) were selected via
-    systematic evaluation in notebooks/chunk_size_analysis.ipynb.  The
-    notebook tests sizes from 256 to 4096 chars on a 50-question QA probe and
-    measures answer faithfulness, context precision, and retrieval latency.
-    1500/200 achieved the best faithfulness score while keeping latency low.
+    Two-stage pipeline
+    ------------------
+    Stage 1 — MarkdownHeaderTextSplitter
+        Splits the paper's markdown at section/subsection boundaries (# / ## /
+        ###).  Each resulting split carries section metadata:
+            {"section": "Introduction"} or {"subsection": "3.2 Experimental Setup"}
+        This prevents a chunk from spanning two unrelated sections (e.g. the end
+        of Methods and the start of Results in the same chunk).
+
+    Stage 2 — RecursiveCharacterTextSplitter
+        Splits long sections that exceed CHUNK_SIZE into overlapping windows.
+        Inherits the section/subsection metadata from Stage 1 so every final
+        chunk knows which part of the paper it came from.
+
+    Why this is better than a single RecursiveCharacterTextSplitter
+    ---------------------------------------------------------------
+    - Chunks never cross section boundaries — a retrieval result is always
+      from one coherent part of the paper.
+    - The `section` metadata is stored on every Neo4j Chunk node, enabling
+      structured queries like:
+          MATCH (c:Chunk) WHERE c.section = 'Methods' ...
+    - The paper's markdown structure (produced by pymupdf4llm in arxiv_loader)
+      is used as a first-class splitting signal, not discarded.
 
     Parameters
     ----------
     doc_list : list[list[Document]]
-        The nested list format returned by arxiv_loader.get_arxiv_documents().
+        Nested list as returned by arxiv_loader.get_arxiv_documents().
+        Each Document's page_content is expected to be clean Markdown with
+        ## section headers.
     """
-    splitter = RecursiveCharacterTextSplitter(
+    header_splitter = MarkdownHeaderTextSplitter(
+        headers_to_split_on=_HEADERS_TO_SPLIT,
+        strip_headers=False,   # keep the heading inside the chunk text
+    )
+    char_splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP,
         length_function=len,
         separators=["\n\n", "\n", " ", ""],
         is_separator_regex=False,
     )
+
     flat_docs = [doc for sublist in doc_list for doc in sublist]
-    return splitter.split_documents(flat_docs)
+    all_chunks: list = []
+
+    for doc in flat_docs:
+        # Stage 1: split on markdown headers
+        section_docs = header_splitter.split_text(doc.page_content)
+
+        # Propagate the parent document's metadata (entry_id, title, etc.)
+        # into each section document, then merge with header metadata.
+        for sec_doc in section_docs:
+            merged_metadata = {**doc.metadata, **sec_doc.metadata}
+            sec_doc.metadata = merged_metadata
+
+        # Stage 2: split long sections by character count
+        final_chunks = char_splitter.split_documents(section_docs)
+        all_chunks.extend(final_chunks)
+
+    return all_chunks
 
 
 # ---------------------------------------------------------------------------
@@ -260,12 +312,27 @@ def create_vector_index(driver) -> None:
 def ingest_chunks_embeddings(driver, chunks: list) -> None:
     """Embed each chunk and store it as a Chunk node linked to its Paper.
 
-    Chunks are matched to their parent Paper via the 'entry_id' stored in
-    LangChain Document metadata.
+    Each Chunk node stores:
+      - text        : the chunk content
+      - embedding   : 384-dim vector for cosine similarity search
+      - section     : top-level section name from the paper (e.g. "Introduction")
+      - subsection  : subsection name if present (e.g. "3.2 Experimental Setup")
+
+    The section/subsection fields come from the MarkdownHeaderTextSplitter
+    metadata added in create_chunks().  They enable structured retrieval:
+
+        MATCH (c:Chunk)<-[:HAS_CHUNK]-(p:Paper)
+        WHERE c.section = 'Methods'
+        RETURN c.text, p.title
     """
     query = """
     MATCH (p:Paper {entry_id: $parent_paper_id})
-    CREATE (c:Chunk {text: $chunk_text, embedding: $chunk_embedding})
+    CREATE (c:Chunk {
+        text:       $chunk_text,
+        embedding:  $chunk_embedding,
+        section:    $section,
+        subsection: $subsection
+    })
     CREATE (p)-[:HAS_CHUNK]->(c)
     """
     for chunk in chunks:
@@ -282,6 +349,8 @@ def ingest_chunks_embeddings(driver, chunks: list) -> None:
                 "parent_paper_id": parent_id,
                 "chunk_text":      chunk.page_content,
                 "chunk_embedding": embedding,
+                "section":         chunk.metadata.get("section"),
+                "subsection":      chunk.metadata.get("subsection"),
             },
         )
 

@@ -1,52 +1,67 @@
-from retrieval.embedder import embedding_model
-from ingestion.neo4j_loader import *
+"""
+retriever.py
+------------
+Vector search against the Neo4j chunk-embeddings index.
+Returns the top-k candidate chunks for a given user query.
+"""
 
-def get_chunks_from_neo4j(driver, user_query, k):
-    """
-    Performs a vector search in Neo4j to retrieve the top k initial chunks.
+from __future__ import annotations
+
+import logging
+
+from ingestion.neo4j_loader import run_cypher_query
+from retrieval.embedder import embedding_model
+
+logger = logging.getLogger(__name__)
+
+
+def get_chunks_from_neo4j(driver, user_query: str, k: int = 50) -> list[dict]:
+    """Perform a vector search over Chunk nodes and return the top-k results.
+
+    Each result dict contains:
+        text        – chunk text
+        score       – cosine similarity score
+        metadata    – dict with paperTitle, paperId, section, subsection
     """
     if not driver:
-        print("Neo4j driver is not connected.")
+        logger.error("Neo4j driver is not connected.")
         return []
 
-    # 1. Generate embedding for the user query
-    user_query_embedding = embedding_model.encode(user_query).tolist()
+    query_embedding = embedding_model.encode(user_query).tolist()
 
-    # 2. Cypher query for vector search
-    query = """
-    CALL db.index.vector.queryNodes('chunk-embeddings', $k, $user_query_embedding)
+    cypher = """
+    CALL db.index.vector.queryNodes('chunk-embeddings', $k, $query_embedding)
     YIELD node AS chunk, score
     MATCH (chunk)<-[:HAS_CHUNK]-(p:Paper)
     RETURN
-      chunk.text AS text,
-      score,
-      p.title AS paperTitle,
-      p.entry_id AS paperId
+        chunk.text       AS text,
+        score,
+        p.title          AS paperTitle,
+        p.entry_id       AS paperId,
+        chunk.section    AS section,
+        chunk.subsection AS subsection
     ORDER BY score DESC
-    LIMIT $k;
+    LIMIT $k
     """
-    parameters = {
-        "user_query_embedding": user_query_embedding,
-        "k": k
-    }
-
     try:
-        # print(f"Retrieving top {k} candidate chunks from Neo4j...")
-        records, summary, keys = run_cypher_query(driver, query, parameters)
-        
-        results = [
+        records, _, _ = run_cypher_query(
+            driver,
+            cypher,
+            {"query_embedding": query_embedding, "k": k},
+        )
+        return [
             {
-                "text": record["text"],
+                "text":  record["text"],
                 "score": record["score"],
                 "metadata": {
-                    "paperTitle": record["paperTitle"],
-                    "paperId": record["paperId"]
-                }
-            } for record in records
+                    "paperTitle":  record["paperTitle"],
+                    "paperId":     record["paperId"],
+                    "section":     record["section"],
+                    "subsection":  record["subsection"],
+                },
+            }
+            for record in records
         ]
-        
-        # print(f"Successfully retrieved {len(results)} chunks.")
-        return results
-    except Exception as e:
-        print(f"Error during Neo4j retrieval: {e}")
+    except Exception as exc:
+        logger.error("Error during Neo4j vector retrieval: %s", exc)
         return []

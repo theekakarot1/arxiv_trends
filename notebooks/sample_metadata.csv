@@ -1,0 +1,101 @@
+entry_id,title,length
+2603.20193,"From Masks to Pixels and Meaning: A New Taxonomy, Benchmark, and Metrics for VLM Image Tampering",79235
+2603.20192,LumosX: Relate Any Identities with Their Attributes for Personalized Video Generation,100138
+2603.20185,VideoSeek: Long-Horizon Video Agent with Tool-Guided Seeking,76906
+2603.20181,Improving Generalization on Cybersecurity Tasks with Multi-Modal Contrastive Learning,45112
+2603.20180,Adaptive Greedy Frame Selection for Long Video Understanding,31134
+2603.20179,AI Agents Can Already Autonomously Perform Experimental High Energy Physics,481936
+2603.20172,Measuring Faithfulness Depends on How You Measure: Classifier Sensitivity in LLM Chain-of-Thought Evaluation,47709
+2603.20170,Learning Dynamic Belief Graphs for Theory-of-mind Reasoning,64615
+2603.20164,The Robot's Inner Critic: Self-Refinement of Social Behaviors through VLM-based Replanning,43326
+2603.20161,Semantic Token Clustering for Efficient Uncertainty Quantification in Large Language Models,49597
+2603.20151,Design-OS: A Specification-Driven Framework for Engineering System Design with a Control-Systems Design Case,58775
+2603.20149,Enhancing Hyperspace Analogue to Language (HAL) Representations via Attention-Based Pooling for Text Classification,19386
+2603.20131,An Agentic Multi-Agent Architecture for Cybersecurity Risk Management,36605
+2603.20122,Evolving Jailbreaks: Automated Multi-Objective Long-Tail Attacks on Large Language Models,70744
+2603.20116,Chain-of-Adaptation: Surgical Vision-Language Adaptation with Reinforcement Learning,55280
+2603.20112,Demonstration of Adapt4Me: An Uncertainty-Aware Authoring Environment for Personalizing Automatic Speech Recognition to Non-normative Speech,31629
+2603.20111,Var-JEPA: A Variational Formulation of the Joint-Embedding Predictive Architecture -- Bridging Predictive and Generative Self-Supervised Learning,92780
+2603.20105,The $\mathbf{Y}$-Combinator for LLMs: Solving Long-Context Rot with $λ$-Calculus,79475
+2603.20103,Spectral Alignment in Forward-Backward Representations via Temporal Abstraction,53915
+2603.20101,Pitfalls in Evaluating Interpretability Agents,125504
+2603.20100,An Empirical Study of SFT-DPO Interaction and Parameterization in Small Language Models,33900
+2603.20094,LLM-Enhanced Semantic Data Integration of Electronic Component Qualifications in the Aerospace Domain,51248
+2603.20075,Agentic Harness for Real-World Compilers,99851
+2603.20063,Fine-tuning Timeseries Predictors Using Reinforcement Learning,48573
+2603.20062,The End of Rented Discovery: How AI Search Redistributes Power Between Hotels and Intermediaries,52910
+2603.20059,DIAL-KG: Schema-Free Incremental Knowledge Graph Construction via Dynamic Schema Induction and Evolution-Intent Assessment,40974
+2603.20046,Experience is the Best Teacher: Motivating Effective Exploration in Reinforcement Learning for LLMs,63644
+2603.20042,LoASR-Bench: Evaluating Large Speech Language Models on Low-Resource Automatic Speech Recognition Across Language Families,27955
+2603.20034,CoverageBench: Evaluating Information Coverage across Tasks and Domains,50648
+2603.20028,Orchestrating Human-AI Software Delivery: A Retrospective Longitudinal Field Study of Three Software Modernization Programs,37890
+2603.20020,Detached Skip-Links and $R$-Probe: Decoupling Feature Aggregation from Gradient Propagation for MLLM OCR,73838
+2603.20007,Physics-Informed Long-Range Coulomb Correction for Machine-learning Hamiltonians,40215
+2603.19987,Breaking the Capability Ceiling of LLM Post-Training by Reintroducing Markov States,86653
+2603.19979,X-World: Controllable Ego-Centric Multi-Camera World Models for Scalable End-to-End Driving,48232
+2603.19975,Promoting Critical Thinking With Domain-Specific Generative AI Provocations,32514
+2603.19974,Trojan's Whisper: Stealthy Manipulation of OpenClaw through Injected Bootstrapped Guidance,92292
+2603.19970,Graph2TS: Structure-Controlled Time Series Generation via Quantile-Graph VAEs,63040
+2603.19957,HiPath: Hierarchical Vision-Language Alignment for Structured Pathology Report Prediction,25609
+2603.19954,On the Ability of Transformers to Verify Plans,168385
+2603.19929,RAM: Recover Any 3D Human Motion in-the-Wild,53810
+2603.19921,Span-Level Machine Translation Meta-Evaluation,73735
+2603.19918,Learning Like Humans: Analogical Concept Learning for Generalized Category Discovery,43905
+2603.19897,Revealing Domain-Spatiality Patterns for Configuration Tuning: Domain Knowledge Meets Fitness Landscapes,157860
+2603.19896,Utility-Guided Agent Orchestration for Efficient LLM Tool Use,39098
+2603.19888,Integrating Meta-Features with Knowledge Graph Embeddings for Meta-Learning,60241
+2603.19880,What If Consensus Lies? Selective-Complementary Reinforcement Learning at Test Time,53465
+2603.19852,Failure Modes for Deep Learning-Based Online Mapping: How to Measure and Address Them,63831
+2603.19849,Semantic Delta: An Interpretable Signal Differentiating Human and LLMs Dialogue,24857
+2603.19831,Gesture2Speech: How Far Can Hand Movements Shape Expressive Speech?,42993
+2603.19828,FormalEvolve: Neuro-Symbolic Evolutionary Search for Diverse and Prover-Effective Autoformalization,101699
+2603.19825,FrameNet Semantic Role Classification by Analogy,53799
+2603.19807,Enhancing Alignment for Unified Multimodal Models via Semantically-Grounded Supervision,70404
+2603.19801,"Offshore oil and gas platform dynamics in the North Sea, Gulf of Mexico, and Persian Gulf: Exploiting the Sentinel-1 archive",68774
+2603.19788,Learning Hierarchical Orthogonal Prototypes for Generalized Few-Shot 3D Point Cloud Segmentation,32713
+2603.19782,Embodied Science: Closing the Discovery Loop with Agentic Embodied AI,67950
+2603.19757,Uncertainty-aware Prototype Learning with Variational Inference for Few-shot Point Cloud Segmentation,26689
+2603.19739,MOSS-TTSD: Text to Spoken Dialogue Generation,35765
+2603.19722,FedRG: Unleashing the Representation Geometry for Federated Learning with Noisy Clients,54669
+2603.19715,Stepwise: Neuro-Symbolic Proof Search for Automated Systems Verification,76329
+2603.19710,AIGQ: An End-to-End Hybrid Generative Architecture for E-commerce Query Recommendation,59349
+2603.19685,A Subgoal-driven Framework for Improving Long-Horizon LLM Agents,147510
+2603.19677,GoAgent: Group-of-Agents Communication Topology Generation for LLM-based Multi-Agent Systems,63828
+2603.19676,ATHENA: Adaptive Test-Time Steering for Improving Count Fidelity in Diffusion Models,59989
+2603.19667,Toward High-Fidelity Visual Reconstruction: From EEG-Based Conditioned Generation to Joint-Modal Guided Rebuilding,39242
+2603.19664,The Residual Stream Is All You Need: On the Redundancy of the KV Cache in Transformer Inference,59788
+2603.19649,PolicySim: An LLM-Based Agent Social Simulation Sandbox for Proactive Policy Optimization,71507
+2603.19643,OmniDiT: Extending Diffusion Transformer to Omni-VTON Framework,72543
+2603.19639,HyEvo: Self-Evolving Hybrid Agentic Workflows for Efficient Reasoning,48119
+2603.19634,MetaCues: Enabling Critical Engagement with Generative AI for Information Seeking and Sensemaking,36577
+2603.19628,Dual Prompt-Driven Feature Encoding for Nighttime UAV Tracking,40615
+2603.19621,DeepStock: Reinforcement Learning with Policy Regularizations for Inventory Management,63344
+2603.19615,CAF-Score: Calibrating CLAP with LALMs for Reference-free Audio Captioning Evaluation,53490
+2603.19609,LoD-Loc v3: Generalized Aerial Localization in Dense Cities using Instance Silhouette Alignment,52762
+2603.19608,FB-CLIP: Fine-Grained Zero-Shot Anomaly Detection with Foreground-Background Disentanglement,81014
+2603.19599,Physics-Informed Neural Network with Adaptive Clustering Learning Mechanism for Information Popularity Prediction,70345
+2603.19594,ARMOR: Adaptive Resilience Against Model Poisoning Attacks in Continual Federated Learning for Mobile Indoor Localization,86108
+2603.19591,Data-driven ensemble prediction of the global ocean,55570
+2603.19584,PowerLens: Taming LLM Agents for Safe and Personalized Mobile Power Management,74882
+2603.19583,Skilled AI Agents for Embedded and IoT Systems Development,33698
+2603.19582,Evolving Embodied Intelligence: Graph Neural Network--Driven Co-Design of Morphology and Control in Soft Robotics,39059
+2603.19579,PA2D-MORL: Pareto Ascent Directional Decomposition based Multi-Objective Reinforcement Learning,40577
+2603.19574,AI Psychosis: Does Conversational AI Amplify Delusion-Related Language?,72266
+2603.19565,PFM-VEPAR: Prompting Foundation Models for RGB-Event Camera based Pedestrian Attribute Recognition,61274
+2603.19563,Dual-Domain Representation Alignment: Bridging 2D and 3D Vision via Geometry-Aware Architecture Search,141531
+2603.19559,Optimal Scalar Quantization for Matrix Multiplication: Closed-Form Density and Phase Transition,46335
+2603.19549,Plagiarism or Productivity? Students Moral Disengagement and Behavioral Intentions to Use ChatGPT in Academic Writing,33849
+2603.19546,Subspace Kernel Learning on Tensor Sequences,90094
+2603.19539,FDARxBench: Benchmarking Regulatory and Clinical Reasoning on FDA Generic Drug Assessment,79026
+2603.19531,dinov3.seg: Open-Vocabulary Semantic Segmentation with DINOv3,65544
+2603.19527,Depictions of Depression in Generative AI Video Models: A Preliminary Study of OpenAI's Sora 2,90991
+2603.19519,Inducing Sustained Creativity and Diversity in Large Language Models,94200
+2603.19516,Gastric-X: A Multimodal Multi-Phase Benchmark Dataset for Advancing Vision-Language Models in Gastric Cancer Analysis,65529
+2603.19515,ItinBench: Benchmarking Planning Across Multiple Cognitive Dimensions with Large Language Models,84417
+2603.19514,Learning to Disprove: Formal Counterexample Generation with Large Language Models,69161
+2603.19512,FedAgain: A Trust-Based and Robust Federated Learning Strategy for an Automated Kidney Stone Identification in Ureteroscopy,111878
+2603.19510,Linear Social Choice with Few Queries: A Moment-Based Approach,94183
+2603.19504,Beyond the Desk: Barriers and Future Opportunities for AI to Assist Scientists in Embodied Physical Tasks,95024
+2603.19500,Teaching an Agent to Sketch One Part at a Time,65508
+2603.19474,TRACE: Trajectory Recovery with State Propagation Diffusion for Urban Mobility,48107
+2603.19470,Adaptive Layerwise Perturbation: Unifying Off-Policy Corrections for LLM RL,60435

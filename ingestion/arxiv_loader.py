@@ -47,7 +47,7 @@ _arxiv_client = arxiv.Client()
 
 # Papers larger than this (chars) after extraction are almost certainly
 # mis-classified books.  Skip them to protect Neo4j.
-_MAX_CONTENT_CHARS = 1_000_000
+_MAX_CONTENT_CHARS = 1000000
 
 
 # ---------------------------------------------------------------------------
@@ -193,8 +193,8 @@ def get_existing_paper_ids(driver) -> set[str]:
         return set()
     try:
         records, _, _ = driver.execute_query(
-            "MATCH (p:Paper) RETURN p.entry_id AS entry_id",
-            database_="neo4j",
+            "MATCH (p:Paper) WHERE p.summary IS NOT NULL RETURN p.entry_id AS entry_id",
+            database_="616caddc",
         )
         return {
             _parse_arxiv_id(r["entry_id"])
@@ -291,11 +291,13 @@ def get_arxiv_documents(driver=None) -> tuple[list, list]:
     """
     # ---- Build bi-monthly date ranges 2017-01 through 2025-04 ----------
     date_ranges: list[tuple[str, str]] = []
-    for year in range(2017, 2026):
-        month_pairs = [(1, 2), (3, 4), (5, 6), (7, 8), (9, 10), (11, 12)]
+    for year in range(2021, 2026):
+        # month_pairs = [(1, 2), (3, 4), (5, 6), (7, 8), (9, 10), (11, 12)]
+        # temp conditions
+        month_pairs = [(1, 2)]
+        if year > 2021:
+            break
         for start_m, end_m in month_pairs:
-            if year == 2025 and start_m > 4:
-                break
             # Correct end-of-month day
             if end_m == 2:
                 end_day = 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28

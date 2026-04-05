@@ -1,52 +1,133 @@
-from retrieval.retriever import *
+"""
+reranker.py
+-----------
+Two-stage retrieval: broad vector search (top-50) → Cohere rerank (top-10).
+
+Provides two interfaces:
+  retrieve_and_rerank()        — synchronous, accepts an existing driver
+                                 (kept for backward compatibility)
+  retrieve_and_rerank_async()  — async, used by LangGraph nodes
+"""
+
+from __future__ import annotations
+
+import logging
 import os
-from dotenv import load_dotenv
+
 import cohere
+from dotenv import load_dotenv
 from langchain_core.documents import Document
-from ingestion.neo4j_loader import *
+
+from retrieval.retriever import (
+    get_chunks_from_neo4j,
+    get_chunks_filtered_async,
+    get_chunks_from_neo4j_async,
+)
+
 load_dotenv()
-COHERE_API_KEY = os.getenv("COHERE_API_KEY")
-co = cohere.ClientV2()
-driver = connect_to_neo4j()
+logger = logging.getLogger(__name__)
+
+_COHERE_API_KEY = os.getenv("COHERE_API_KEY", "")
+_co = cohere.ClientV2(api_key=_COHERE_API_KEY) if _COHERE_API_KEY else None
 
 
-def retrieve_and_rerank_documents(driver, user_query):
+def _rerank_chunks(chunks: list[dict], query: str, top_n: int) -> list[dict]:
+    """
+    Run Cohere reranking on a list of chunks.
+    Returns reranked top_n chunks, or the original top_n by score on failure.
+    Shared by both sync and async callers.
+    """
+    if not _co:
+        logger.warning("Cohere client not configured — skipping rerank")
+        return chunks[:top_n]
+
+    try:
+        doc_texts = [chunk["text"] for chunk in chunks]
+        result    = _co.rerank(
+            model="rerank-english-v3.0",
+            query=query,
+            documents=doc_texts,
+            top_n=top_n,
+        )
+        reranked: list[dict] = []
+        for r in result.results:
+            chunk = dict(chunks[r.index])
+            chunk["rerank_score"] = r.relevance_score
+            reranked.append(chunk)
+        return reranked
+
+    except Exception as exc:
+        logger.error("Cohere reranking failed: %s — using score fallback", exc)
+        return chunks[:top_n]
+
+
+# ---------------------------------------------------------------------------
+# Synchronous interface (existing — unchanged behaviour)
+# ---------------------------------------------------------------------------
+
+def retrieve_and_rerank(driver, user_query: str, top_n: int = 10) -> list[dict]:
+    """
+    Two-stage retrieval for sync callers.
+    Accepts an existing neo4j sync driver.
+    """
     initial_chunks = get_chunks_from_neo4j(driver, user_query, k=50)
+    if not initial_chunks:
+        logger.warning("No chunks retrieved from Neo4j.")
+        return []
+    return _rerank_chunks(initial_chunks, user_query, top_n)
+
+
+def get_retriever_documents(driver, user_query: str) -> list[Document]:
+    """LangChain-compatible retriever interface for sync callers."""
+    chunks = retrieve_and_rerank(driver, user_query)
+    return [
+        Document(page_content=chunk["text"], metadata=chunk["metadata"])
+        for chunk in chunks
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Async interface (used by LangGraph nodes)
+# ---------------------------------------------------------------------------
+
+async def retrieve_and_rerank_async(
+    user_query: str,
+    top_n: int = 10,
+    k: int = 50,
+    paper_ids: list[str] | None = None,
+    neo4j_uri: str = "",
+    neo4j_user: str = "",
+    neo4j_password: str = "",
+    neo4j_database: str = "neo4j",
+) -> list[dict]:
+    """
+    Async two-stage retrieval used by LangGraph nodes.
+
+    Parameters
+    ----------
+    paper_ids : list[str] | None
+        When provided, restricts vector search to chunks belonging to
+        these papers (used in the hybrid citation path).
+        When None, searches all chunks.
+    """
+    connection_kwargs = dict(
+        neo4j_uri=neo4j_uri,
+        neo4j_user=neo4j_user,
+        neo4j_password=neo4j_password,
+        neo4j_database=neo4j_database,
+    )
+
+    if paper_ids is not None:
+        initial_chunks = await get_chunks_filtered_async(
+            user_query, paper_ids, k=k, **connection_kwargs
+        )
+    else:
+        initial_chunks = await get_chunks_from_neo4j_async(
+            user_query, k=k, **connection_kwargs
+        )
 
     if not initial_chunks:
-        print("No chunks retrieved from Neo4j.")
+        logger.warning("Async retrieval returned no chunks.")
         return []
-    
-    # rerank_client = RerankClient(api_key=COHERE_API_KEY)
-    
-    # Extract just the text of the chunks for the reranker
-    document_texts = [chunk["text"] for chunk in initial_chunks]
-    
-    
-    try:
-        rerank_results = co.rerank(
-                            model="rerank-english-v3.0", query=user_query, documents=document_texts, top_n=10
-                                )
-        
-        # 3. Process the reranked results
-        final_reranked_chunks = []
-        for result in rerank_results.results:
-            original_index = result.index
-            original_chunk = initial_chunks[original_index]
-            original_chunk["rerank_score"] = result.relevance_score
-            final_reranked_chunks.append(original_chunk)
-            
-        # print(f"Successfully reranked and selected {len(final_reranked_chunks)} final chunks.")
-        return final_reranked_chunks
-        
-    except Exception as e:
-        print(f"Error during Cohere reranking: {e}")
-        # Fallback to the top N of the initial retrieval
-        return initial_chunks[:10]
-    
-def get_custom_retriever_documents(input_dict):
-    # print("input_dict :",input_dict)
-    user_query = input_dict
-    retrieved_chunks = retrieve_and_rerank_documents(driver, user_query)
-    docs = [Document(page_content=chunk['text'], metadata=chunk['metadata']) for chunk in retrieved_chunks]
-    return docs
+
+    return _rerank_chunks(initial_chunks, user_query, top_n)

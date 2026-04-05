@@ -64,8 +64,8 @@ embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 # Chunk parameters — update these after running notebooks/chunk_size_analysis.ipynb.
 # These values are the final size/overlap applied WITHIN each section after
 # the markdown header splitter has already separated the paper into sections.
-CHUNK_SIZE    = 1_500
-CHUNK_OVERLAP = 200
+CHUNK_SIZE    = 832
+CHUNK_OVERLAP = 0
 
 # Markdown headers that signal a new logical section in arXiv papers.
 # pymupdf4llm renders section titles as ## and subsection titles as ###.
@@ -105,7 +105,7 @@ def run_cypher_query(driver, query: str, parameters: dict | None = None):
     records, summary, keys = driver.execute_query(
         query,
         parameters_=parameters or {},
-        database_="neo4j",
+        database_="616caddc",
     )
     return records, summary, keys
 
@@ -202,7 +202,7 @@ def ingest_papers(doc_details: list[dict], driver) -> None:
             driver,
             """
             MERGE (p:Paper {entry_id: $entry_id})
-            ON CREATE SET
+            SET
                 p.title       = $title,
                 p.published   = datetime($published),
                 p.summary     = $summary,

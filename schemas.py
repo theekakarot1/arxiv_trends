@@ -58,7 +58,7 @@ class QueryEntities(BaseModel):
         description="4-digit year if mentioned, else null. Always a string.",
     )
     topic: str = Field(
-        description="Main research topic. Always populated — infer from the query.",
+        description="Main research topic. Always populated, infer from the query.",
     )
 
     @field_validator("year")

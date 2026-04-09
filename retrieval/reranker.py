@@ -98,7 +98,7 @@ async def retrieve_and_rerank_async(
     neo4j_uri: str = "",
     neo4j_user: str = "",
     neo4j_password: str = "",
-    neo4j_database: str = "neo4j",
+    neo4j_database: str = "616caddc",
 ) -> list[dict]:
     """
     Async two-stage retrieval used by LangGraph nodes.

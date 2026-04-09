@@ -44,6 +44,9 @@ from config import (
     NEO4J_URI,
     NEO4J_USER,
 )
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+from langchain_mcp_adapters.tools import load_mcp_tools
 
 logger = logging.getLogger(__name__)
 
@@ -157,10 +160,6 @@ class Neo4jMCPTools:
         Start the MCP server subprocess and load its tools.
         This is an async classmethod so it can be awaited at startup.
         """
-        from mcp import ClientSession, StdioServerParameters
-        from mcp.client.stdio import stdio_client
-        from langchain_mcp_adapters.tools import load_mcp_tools
-
         server_params = StdioServerParameters(
             command=MCP_SERVER_COMMAND,
             args=MCP_SERVER_ARGS,

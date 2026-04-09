@@ -142,7 +142,7 @@ async def get_chunks_filtered_async(
     neo4j_uri: str = "",
     neo4j_user: str = "",
     neo4j_password: str = "",
-    neo4j_database: str = "neo4j",
+    neo4j_database: str = "616caddc",
 ) -> list[dict]:
     """
     Async vector search scoped to a specific list of paper entry_ids.

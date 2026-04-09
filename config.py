@@ -80,7 +80,7 @@ MIN_SCORE_THRESHOLD = float(os.getenv("MIN_SCORE_THRESHOLD", "0.5"))
 # Memory / conversation history
 # ---------------------------------------------------------------------------
 # Max tokens of history before summarisation is triggered
-HISTORY_TOKEN_LIMIT = int(os.getenv("HISTORY_TOKEN_LIMIT", "4000"))
+HISTORY_TOKEN_LIMIT = int(os.getenv("HISTORY_TOKEN_LIMIT", "10000"))
 # Rough chars-per-token estimate for quick checks without calling a tokeniser
 CHARS_PER_TOKEN = 4
 

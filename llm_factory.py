@@ -15,9 +15,10 @@ from __future__ import annotations
 
 import logging
 from typing import Any
-
+from langchain_openai import ChatOpenAI
 from langchain_core.language_models import BaseChatModel
-
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import AzureChatOpenAI
 from config import (
     AZURE_OPENAI_API_VERSION,
     AZURE_OPENAI_DEPLOYMENT,
@@ -133,7 +134,6 @@ def _build_llm(
     """Construct the provider-specific LangChain chat model."""
 
     if provider == "gemini":
-        from langchain_google_genai import ChatGoogleGenerativeAI
         return ChatGoogleGenerativeAI(
             model=model or GEMINI_MODEL,
             google_api_key=api_key,
@@ -142,7 +142,7 @@ def _build_llm(
         )
 
     elif provider == "openai":
-        from langchain_openai import ChatOpenAI
+        
         return ChatOpenAI(
             model=model or OPENAI_MODEL,
             api_key=api_key,
@@ -151,7 +151,7 @@ def _build_llm(
         )
 
     elif provider == "azure_openai":
-        from langchain_openai import AzureChatOpenAI
+        
         return AzureChatOpenAI(
             azure_endpoint=endpoint,
             azure_deployment=deployment or AZURE_OPENAI_DEPLOYMENT,

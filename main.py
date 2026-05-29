@@ -16,12 +16,12 @@ Features:
 """
 
 from __future__ import annotations
-
+from langsmith import Client
 import asyncio
 import logging
 import sys
 from pathlib import Path
-
+import concurrent.futures
 import streamlit as st
 
 # Make the app/ directory importable when running from project root
@@ -73,7 +73,6 @@ def run_async(coro):
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
-            import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 future = pool.submit(asyncio.run, coro)
                 return future.result()
@@ -235,7 +234,6 @@ def submit_feedback(run_id: str | None, score: int, message_idx: int):
         return
 
     try:
-        from langsmith import Client
         client = Client(api_key=LANGSMITH_API_KEY)
         client.create_feedback(
             run_id=run_id,

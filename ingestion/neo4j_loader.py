@@ -1,38 +1,3 @@
-"""
-neo4j_loader.py
----------------
-All Neo4j interactions: connection, schema creation, data ingestion, and
-vector-index management.
-
-Graph schema (nodes)
----------------------
-  Paper       – title, entry_id, published, summary, doi, journal_ref
-  Author      – name
-  Category    – name
-  Model       – name  (Models & Algorithms entities)
-  Dataset     – name
-  Metrics     – name
-  Libraries   – name  (Libraries & Frameworks entities)
-  Tasks       – name
-  Concepts    – name  (Theories & Concepts entities)
-  Institute   – name
-  Chunk       – text, embedding  (vector-searchable chunks of Paper content)
-
-Relationships
--------------
-  (Paper)-[:WRITTEN_BY]           -> (Author)
-  (Paper)-[:IN_CATEGORY]          -> (Category)
-  (Paper)-[:MODEL_ALGORITHM_USED] -> (Model)
-  (Paper)-[:DATASET_USED]         -> (Dataset)
-  (Paper)-[:METRICS_USED]         -> (Metrics)
-  (Paper)-[:LIBRARY_FRAMEWORK_USED] -> (Libraries)
-  (Paper)-[:TASK_PERFORMED]       -> (Tasks)
-  (Paper)-[:THEORIES_CONCEPTS_USED] -> (Concepts)
-  (Paper)-[:INSTITUTE]            -> (Institute)
-  (Paper)-[:HAS_CHUNK]            -> (Chunk)
-  (Paper)-[:CITES]                -> (Paper)   ← citation graph
-"""
-
 from __future__ import annotations
 
 import logging

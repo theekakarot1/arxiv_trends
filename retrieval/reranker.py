@@ -1,14 +1,3 @@
-"""
-reranker.py
------------
-Two-stage retrieval: broad vector search (top-50) → Cohere rerank (top-10).
-
-Provides two interfaces:
-  retrieve_and_rerank()        — synchronous, accepts an existing driver
-                                 (kept for backward compatibility)
-  retrieve_and_rerank_async()  — async, used by LangGraph nodes
-"""
-
 from __future__ import annotations
 
 import logging

@@ -1,16 +1,3 @@
-"""
-llm_factory.py
---------------
-Creates and validates LLM clients for all supported providers.
-
-Supported providers: gemini, openai, azure_openai
-All return a LangChain BaseChatModel so the rest of the app
-is completely provider-agnostic.
-
-Validation: makes a cheap test call (single token) to confirm
-the API key and endpoint are valid before accepting them.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -55,7 +42,7 @@ def _validate_fields(provider: str, **kwargs: Any) -> tuple[bool, str]:
     required: dict[str, list[str]] = {
         "gemini":       ["api_key"],
         "openai":       ["api_key"],
-        "azure_openai": ["api_key", "endpoint", "deployment"],
+        "azure_openai": ["api_key", "endpoint", "deployment", "api_version"],
     }
     missing = [f for f in required.get(provider, []) if not kwargs.get(f)]
     if missing:
@@ -70,9 +57,9 @@ def _validate_fields(provider: str, **kwargs: Any) -> tuple[bool, str]:
 def create_llm(
     provider: str,
     api_key: str,
-    endpoint: str = "",
-    deployment: str = "",
-    model: str = "",
+    endpoint: str,
+    model: str,
+    api_version: str,
     temperature: float = 0.1,
     validate: bool = True,
 ) -> tuple[BaseChatModel | None, str]:
@@ -96,14 +83,14 @@ def create_llm(
     """
     # Step 1 — field presence check
     ok, err = _validate_fields(
-        provider, api_key=api_key, endpoint=endpoint, deployment=deployment
+        provider, api_key=api_key, endpoint=endpoint, deployment=model, api_version=api_version
     )
     if not ok:
         return None, err
 
     # Step 2 — build the LLM object
     try:
-        llm = _build_llm(provider, api_key, endpoint, deployment, model, temperature)
+        llm = _build_llm(provider, api_key, endpoint, api_version,model ,temperature)
     except ImportError as exc:
         pkg = str(exc).split("'")[1] if "'" in str(exc) else str(exc)
         return None, (
@@ -127,7 +114,7 @@ def _build_llm(
     provider: str,
     api_key: str,
     endpoint: str,
-    deployment: str,
+    api_version: str,
     model: str,
     temperature: float,
 ) -> BaseChatModel:
@@ -151,12 +138,11 @@ def _build_llm(
         )
 
     elif provider == "azure_openai":
-        
         return AzureChatOpenAI(
             azure_endpoint=endpoint,
-            azure_deployment=deployment or AZURE_OPENAI_DEPLOYMENT,
+            deployment_name=model,
             api_key=api_key,
-            api_version=AZURE_OPENAI_API_VERSION,
+            api_version=api_version,
             temperature=temperature,
             max_retries=2,
         )
@@ -188,7 +174,8 @@ def get_provider_fields(provider: str) -> list[dict]:
     extra: dict[str, list[dict]] = {
         "azure_openai": [
             {"key": "endpoint",   "label": "Azure Endpoint",    "type": "text"},
-            {"key": "deployment", "label": "Deployment Name",   "type": "text"},
+            {"key": "deployment", "label": "Model Name",   "type": "text"},
+            {"key": "api_version", "label": "API Version",   "type": "text"},
         ]
     }
     return base_fields + extra.get(provider, [])

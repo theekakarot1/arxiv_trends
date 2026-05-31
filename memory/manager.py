@@ -1,17 +1,6 @@
-"""
-memory/manager.py
------------------
-Conversation history utilities for the Streamlit session.
-
-Responsibilities:
-  - Format history for display in the UI
-  - Estimate token count for the history budget check
-  - Provide helper to build the initial state for a new graph invocation
-"""
-
 from __future__ import annotations
 
-from ..config import CHARS_PER_TOKEN
+from config import CHARS_PER_TOKEN
 
 
 def estimate_tokens(messages: list[dict]) -> int:

@@ -1,24 +1,3 @@
-"""
-graph/nodes.py
---------------
-Every LangGraph node as an async function.
-
-LLM call strategy
------------------
-Structured calls (query understanding, paper resolution, Cypher generation):
-  llm.with_structured_output(PydanticModel) — provider-native JSON mode.
-  Pydantic validates field types, required fields, and enum constraints.
-  Raises ValidationError on bad output rather than silently using wrong values.
-
-Plain text calls (answer synthesis, memory summarisation, plot code):
-  llm.ainvoke(messages) — freeform prose or code output.
-  Structured output is not appropriate here because the content is
-  deliberately freeform (an essay answer, Python code, a summary paragraph).
-
-Retrieval:
-  Delegated entirely to retrieval/ package — no duplication here.
-"""
-
 from __future__ import annotations
 
 import json
@@ -29,7 +8,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import ValidationError
 
-from ..config import (
+from config import (
     CHARS_PER_TOKEN,
     HISTORY_TOKEN_LIMIT,
     NEO4J_DATABASE,
@@ -39,8 +18,8 @@ from ..config import (
     RERANK_TOP_N,
     VECTOR_SEARCH_K,
 )
-from state import AppState
-from ..prompts import (
+from graph.state import AppState
+from prompts import (
     ANSWER_HUMAN,
     ANSWER_SYSTEM,
     CYPHER_GENERATION_SYSTEM,
@@ -52,7 +31,7 @@ from ..prompts import (
     QUERY_UNDERSTANDING_HUMAN,
     QUERY_UNDERSTANDING_SYSTEM,
 )
-from ..schemas import (
+from schemas import (
     CypherGenerationOutput,
     PaperResolutionOutput,
     QueryUnderstandingOutput,

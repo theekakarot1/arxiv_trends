@@ -1,15 +1,3 @@
-"""
-arxiv_ner.py
-------------
-Runs the custom spaCy NER model over raw paper text and merges the
-extracted entities into each document's metadata dict.
-
-The NER model (arxiv_ner_model/) was trained on LLM-annotated arXiv
-abstracts and full texts.  It recognises seven entity types:
-  Models & Algorithms, Datasets, Metrics, Libraries & Frameworks,
-  Tasks, Theories & Concepts, Institutions.
-"""
-
 from __future__ import annotations
 
 import logging

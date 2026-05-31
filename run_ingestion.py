@@ -1,22 +1,3 @@
-"""
-run_ingestion.py
-----------------
-Orchestrates the full ingestion pipeline:
-
-  1. Connect to Neo4j.
-  2. Fetch new arXiv papers (skipping already-ingested ones).
-  3. Run NER to extract entities from full text.
-  4. Ingest Paper nodes + entity nodes + relationships into Neo4j.
-  5. Ingest CITES relationships derived from in-text citation patterns.
-  6. Create/ensure the vector index on Chunk nodes.
-  7. Embed and store text chunks for semantic retrieval.
-
-Run from the project root:
-    python run_ingestion.py
-
-Logging is written to stdout and to logs/ingestion.log.
-"""
-
 from __future__ import annotations
 
 import logging

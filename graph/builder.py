@@ -1,27 +1,3 @@
-"""
-graph/builder.py
-----------------
-Constructs the compiled LangGraph StateGraph.
-
-The graph is built once and cached. It receives the LLM, MCP tools,
-and schema as dependencies — keeping nodes pure and testable.
-
-Graph structure:
-  START
-    ↓
-  query_understanding
-    ↓ (conditional)
-    ├── paper_resolution  ──→  cypher_generation
-    ├── vector_retrieval  ──→  rerank ──→ answer
-    └── cypher_generation ──→  cypher_execution
-                                  ↓ (conditional)
-                                  ├── filtered_retrieval → rerank → answer
-                                  ├── plot
-                                  ├── answer
-                                  └── not_found
-  all terminal paths → memory_update → END
-"""
-
 from __future__ import annotations
 
 import functools
@@ -30,18 +6,9 @@ import logging
 from langchain_core.language_models import BaseChatModel
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
+from graph.edges import route_after_answer,route_after_cypher_execution,route_after_not_found,route_after_paper_resolution,route_after_query_understanding,route_after_rerank,route_after_retrieval
 
-
-from ..graph.edges import (
-    route_after_answer,
-    route_after_cypher_execution,
-    route_after_not_found,
-    route_after_paper_resolution,
-    route_after_query_understanding,
-    route_after_rerank,
-    route_after_retrieval,
-)
-from ..graph.nodes import (
+from graph.nodes import (
     answer_node,
     cypher_execution_node,
     cypher_generation_node,
@@ -54,8 +21,8 @@ from ..graph.nodes import (
     rerank_node,
     vector_retrieval_node,
 )
-from ..graph.state import AppState
-from ..session.tools.neo4j_mcp import Neo4jMCPTools
+from graph.state import AppState
+from session.tools.neo4j_mcp import Neo4jMCPTools
 
 logger = logging.getLogger(__name__)
 

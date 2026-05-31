@@ -1,26 +1,3 @@
-"""
-prompts.py
-----------
-Every system prompt used by the LangGraph nodes.
-
-Design change from previous version
--------------------------------------
-Prompts no longer describe the JSON output format in prose.
-with_structured_output(PydanticModel) handles format enforcement
-at the provider level (Gemini response_schema, OpenAI function calling).
-
-Prompts now focus entirely on:
-  - Role and task framing
-  - Decision rules and definitions
-  - Examples of correct classification
-  - Constraints on content (not on format)
-
-This separation means:
-  - Prompts are shorter and easier to maintain
-  - The LLM spends its attention on the task, not parsing format instructions
-  - Validation is done by Pydantic, not by prompt instructions
-"""
-
 # ---------------------------------------------------------------------------
 # Query Understanding Node
 # ---------------------------------------------------------------------------

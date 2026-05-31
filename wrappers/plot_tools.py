@@ -1,14 +1,3 @@
-"""
-tools/plot_tools.py
--------------------
-Handles Plotly chart generation from LLM-generated code.
-
-Security note: LLM-generated code is executed with exec(). This is contained
-to a restricted namespace with only the libraries needed for plotting.
-The MCP server runs in read-only mode so no data mutation can happen,
-and the exec namespace has no access to os, sys, or file system.
-"""
-
 from __future__ import annotations
 
 import logging

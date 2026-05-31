@@ -1,32 +1,3 @@
-"""
-arxiv_loader.py
----------------
-Responsible for fetching arXiv paper metadata and full-text content.
-
-Extraction strategy
-  Raw PDF text from pymupdf (used by ArxivLoader) has several problems for
-  chunking: single \n line-wraps inside paragraphs, missing paragraph breaks,
-  column-layout artefacts, arXiv watermarks bleeding in mid-text, and equations
-  rendering as symbol garbage.
-
-  We use two complementary approaches:
-    1. pymupdf4llm.to_markdown() — converts the PDF to Markdown, preserving
-       section headings as ## markers, tables, and lists.  This is the primary
-       extraction path and feeds the structure-aware chunker in neo4j_loader.py.
-    2. clean_arxiv_text() — applied to the markdown output to remove residual
-       noise (watermarks, excessive blank lines, hyphenation artefacts).
-
-  The resulting text is stored as `page_content` on the LangChain Document so
-  the rest of the pipeline is unchanged.
-
-Key behaviours
-  - Skips papers already present in Neo4j  (idempotent / incremental ingestion).
-  - Extracts cited arXiv IDs from the cleaned text for the citation graph.
-  - Retries transient arXiv API failures with exponential back-off.
-  - Downloads the actual PDF to a temp file, extracts with pymupdf4llm, then
-    deletes the temp file immediately to avoid disk accumulation.
-"""
-
 from __future__ import annotations
 
 import logging

@@ -1,16 +1,3 @@
-"""
-graph/state.py
---------------
-The shared state object that flows through every node in the LangGraph graph.
-
-Design principles:
-  - Every field is Optional with a sensible default so nodes can be added
-    without breaking existing state.
-  - Annotated[list, operator.add] on message lists so LangGraph appends
-    new messages rather than replacing the list.
-  - All intermediate results are stored so any node can inspect them.
-"""
-
 from __future__ import annotations
 
 import operator

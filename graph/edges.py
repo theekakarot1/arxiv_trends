@@ -1,16 +1,6 @@
-"""
-graph/edges.py
---------------
-All conditional edge functions for the LangGraph graph.
-
-Each function receives the current AppState and returns the name of
-the next node to execute. This keeps routing logic separate from
-node business logic and easy to test independently.
-"""
-
 from __future__ import annotations
 
-from ..graph.state import AppState
+from graph.state import AppState
 
 
 def route_after_query_understanding(state: AppState) -> str:

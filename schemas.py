@@ -1,35 +1,3 @@
-"""
-schemas.py
-----------
-Pydantic models for every structured LLM call in the application.
-
-Why Pydantic + with_structured_output instead of manual json.loads()
-----------------------------------------------------------------------
-1. Type safety — field types are enforced at parse time. If the LLM
-   returns year as an integer when a string is expected, Pydantic
-   coerces or raises, not silently passes the wrong type downstream.
-
-2. Enum validation — Literal types mean the LLM cannot return
-   "Semantic" or "SEMANTIC" when "semantic" is required. Invalid
-   values raise ValidationError immediately.
-
-3. Required vs optional fields — Required fields that are missing
-   raise ValidationError. Optional fields get their default values.
-   No more silent .get("field", fallback) hiding LLM failures.
-
-4. Provider-native JSON mode — with_structured_output uses the
-   provider's built-in JSON schema enforcement (Gemini response_schema,
-   OpenAI function calling / response_format) which is more reliable
-   than prompting the LLM to produce valid JSON.
-
-5. No code fence stripping — the old _call_llm_json had to manually
-   strip ```json fences. with_structured_output bypasses that entirely.
-
-One model per LLM call. Plain text responses (answer synthesis,
-memory summarisation, plot code) are not structured — they stay
-as _call_llm_text because their output is freeform prose or code.
-"""
-
 from __future__ import annotations
 
 from typing import Any, Literal

@@ -1,39 +1,12 @@
-"""
-tools/neo4j_mcp.py
-------------------
-Manages the connection to the mcp-neo4j-cypher MCP server and exposes
-the tools the LangGraph nodes use.
-
-## Why this design
-
-The mcp-neo4j-cypher server runs as a subprocess (via uvx) and communicates
-over stdio. LangChain's MCP adapter wraps its tools as standard LangChain
-StructuredTool objects, making them callable from LangGraph nodes just like
-any other tool.
-
-## Tools exposed by the MCP server
-  - read_neo4j_cypher   : execute a read-only Cypher query
-  - write_neo4j_cypher  : execute a write Cypher query (disabled — read-only mode)
-
-## Schema retrieval
-get_neo4j_schema from the MCP server requires APOC, which is not available
-on AuraDB free tier. We implement schema retrieval ourselves using native
-Cypher (db.labels(), db.relationshipTypes(), db.schema.visualization()).
-This is called once at startup and cached.
-
-## Lifecycle
-The MCP server process must stay alive for the duration of the app session.
-It is started once and managed via an async context manager that Streamlit
-caches as a resource.
-"""
-
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
+import threading
 from typing import Any
-
+import shutil
+import os
 from neo4j import AsyncGraphDatabase
 from config import (
     MCP_SERVER_ARGS,
@@ -52,6 +25,53 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Background event loop — one per process, lives forever
+# ---------------------------------------------------------------------------
+
+class _BgLoop:
+    """
+    A single asyncio event loop running in a daemon thread.
+
+    All MCP I/O and LangGraph coroutines are submitted here so that:
+      - The subprocess stdin/stdout streams stay on the loop that created them.
+      - No coroutine ever crosses loop boundaries.
+    """
+
+    _instance: "_BgLoop | None" = None
+    _lock = threading.Lock()
+
+    def __init__(self) -> None:
+        self._loop = asyncio.new_event_loop()
+        t = threading.Thread(
+            target=self._run, daemon=True, name="neo4j-mcp-bg-loop"
+        )
+        t.start()
+        logger.info("Background event loop started (thread: %s)", t.name)
+
+    def _run(self) -> None:
+        asyncio.set_event_loop(self._loop)
+        self._loop.run_forever()
+
+    def submit(self, coro, timeout: float = 60):
+        """Submit a coroutine and block the calling thread until it completes."""
+        future = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        return future.result(timeout=timeout)
+
+    @classmethod
+    def get(cls) -> "_BgLoop":
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls()
+        return cls._instance
+
+
+def run_on_bg_loop(coro, timeout: float = 60):
+    """Public helper used by main.py to replace run_async()."""
+    return _BgLoop.get().submit(coro, timeout=timeout)
+
+
+# ---------------------------------------------------------------------------
 # Schema retrieval — native Cypher (no APOC required)
 # ---------------------------------------------------------------------------
 
@@ -59,26 +79,22 @@ async def get_neo4j_schema() -> str:
     """
     Retrieve the graph schema using native Neo4j Cypher.
     Works on AuraDB free tier without APOC.
-
-    Returns a human-readable schema description that the Cypher Generation
-    node includes in its prompt so the LLM generates valid queries.
     """
     driver = AsyncGraphDatabase.driver(
         NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)
     )
     try:
         async with driver.session(database=NEO4J_DATABASE) as session:
-            # Node labels
-            label_result = await session.run("CALL db.labels() YIELD label RETURN label")
+            label_result = await session.run(
+                "CALL db.labels() YIELD label RETURN label"
+            )
             labels = [r["label"] async for r in label_result]
 
-            # Relationship types
             rel_result = await session.run(
                 "CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType"
             )
             rel_types = [r["relationshipType"] async for r in rel_result]
 
-            # Property keys per label (sample one node per label)
             label_props: dict[str, list[str]] = {}
             for label in labels:
                 try:
@@ -90,14 +106,13 @@ async def get_neo4j_schema() -> str:
                 except Exception:
                     label_props[label] = []
 
-            # Relationships with source → target
             schema_result = await session.run(
                 """
                 MATCH (a)-[r]->(b)
                 RETURN DISTINCT
-                    labels(a)[0]    AS from_label,
-                    type(r)         AS rel_type,
-                    labels(b)[0]    AS to_label
+                    labels(a)[0]  AS from_label,
+                    type(r)       AS rel_type,
+                    labels(b)[0]  AS to_label
                 LIMIT 200
                 """
             )
@@ -105,11 +120,9 @@ async def get_neo4j_schema() -> str:
                 f"(:{r['from_label']})-[:{r['rel_type']}]->(:{r['to_label']})"
                 async for r in schema_result
             ]
-
     finally:
         await driver.close()
 
-    # Format as readable schema string for the prompt
     lines = ["## Node labels and their properties"]
     for label in sorted(labels):
         props = label_props.get(label, [])
@@ -130,56 +143,87 @@ async def get_neo4j_schema() -> str:
 
 
 # ---------------------------------------------------------------------------
-# MCP tool wrappers — used by LangGraph nodes
+# Neo4jMCPTools
 # ---------------------------------------------------------------------------
 
 class Neo4jMCPTools:
     """
     Wraps the mcp-neo4j-cypher MCP server tools for use in LangGraph nodes.
 
-    Usage
-    -----
-    tools = await Neo4jMCPTools.create()
+    Lifecycle
+    ---------
+    tools = Neo4jMCPTools.create()   # sync, safe to call from Streamlit
 
-    # In a LangGraph node:
-    results = await tools.read_cypher(
-        "MATCH (p:Paper) WHERE p.published.year = $year RETURN p.title LIMIT 10",
-        {"year": 2024}
-    )
+    # In a LangGraph node (already running on bg loop):
+    results = await tools.read_cypher("MATCH (p:Paper) RETURN p.title LIMIT 5")
     """
 
-    def __init__(self, langchain_tools: list) -> None:
-        self._tools = {t.name: t for t in langchain_tools}
-        logger.info(
-            "MCP tools loaded: %s", list(self._tools.keys())
-        )
+    def __init__(
+        self,
+        langchain_tools: list,
+        session: ClientSession,   # already-entered ClientSession
+        _cm_stdio: Any,           # already-entered stdio_client ctx mgr
+    ) -> None:
+        self._tools     = {t.name: t for t in langchain_tools}
+        self._session   = session
+        self._cm_stdio  = _cm_stdio
+        logger.info("MCP tools loaded: %s", list(self._tools.keys()))
+
+    # ------------------------------------------------------------------
+    # Factory
+    # ------------------------------------------------------------------
 
     @classmethod
-    async def create(cls) -> "Neo4jMCPTools":
+    def create(cls) -> "Neo4jMCPTools":
         """
-        Start the MCP server subprocess and load its tools.
-        This is an async classmethod so it can be awaited at startup.
+        Synchronous factory — safe to call from Streamlit's sync context
+        or from @st.cache_resource.
+
+        Starts the MCP server subprocess on the background loop and returns
+        a ready-to-use instance.  Raises on failure (caller should catch).
         """
-        server_params = StdioServerParameters(
-            command=MCP_SERVER_COMMAND,
+        return _BgLoop.get().submit(cls._create_async(), timeout=120)
+
+    @staticmethod
+    async def _create_async() -> "Neo4jMCPTools":
+        # Resolve full path so subprocess finds uvx regardless of thread PATH
+        uvx_path = shutil.which(MCP_SERVER_COMMAND)
+        if not uvx_path:
+            raise FileNotFoundError(
+                f"'{MCP_SERVER_COMMAND}' not found on PATH. "
+                f"PATH={os.environ.get('PATH', '<empty>')}"
+            )
+        logger.info("Resolved MCP command: %s", uvx_path)
+
+        params = StdioServerParameters(
+            command=uvx_path,
             args=MCP_SERVER_ARGS,
-            env=MCP_SERVER_ENV,
+            env={**os.environ, **MCP_SERVER_ENV},  # full env — don't strip PATH/TEMP
         )
 
-        # We hold references to read/write so the session stays open.
-        # The caller is responsible for calling .close() when done.
-        read, write = await asyncio.get_event_loop().run_in_executor(
-            None,
-            lambda: _start_mcp_sync(server_params),
-        )
+        # ── Step 1: enter stdio_client, keep _cm_stdio alive to prevent GC ──
+        _cm_stdio = stdio_client(params)
+        read, write = await _cm_stdio.__aenter__()
+        logger.info("stdio streams ready")
 
-        session = ClientSession(read, write)
-        await session.initialize()
+        # ── Step 2: enter ClientSession — THIS starts the background receive  ──
+        # ── loop that reads server responses. Without __aenter__(), the loop  ──
+        # ── never starts and initialize() hangs waiting for a reply forever.  ──
+        _cm_session = ClientSession(read, write)
+        await _cm_session.__aenter__()
+        logger.info("ClientSession entered (receive loop started)")
 
-        tools = await load_mcp_tools(session)
-        instance = cls(tools)
-        instance._session = session
-        return instance
+        await _cm_session.initialize()
+        logger.info("MCP session initialised successfully")
+
+        tools = await load_mcp_tools(_cm_session)
+        logger.info("Tools loaded: %s", [t.name for t in tools])
+
+        return Neo4jMCPTools(tools, _cm_session, _cm_stdio)
+
+    # ------------------------------------------------------------------
+    # Cypher execution
+    # ------------------------------------------------------------------
 
     async def read_cypher(
         self, query: str, parameters: dict[str, Any] | None = None
@@ -187,8 +231,9 @@ class Neo4jMCPTools:
         """
         Execute a read-only Cypher query via the MCP server.
 
-        Returns a list of record dicts.
-        Falls back to empty list on error (with logging).
+        This is an async method — call it with `await` from LangGraph nodes.
+        Those nodes are invoked via run_on_bg_loop(graph.ainvoke(...)), so
+        they run on the same loop as the MCP session. No cross-loop issues.
         """
         tool = self._tools.get("read_neo4j_cypher")
         if tool is None:
@@ -201,59 +246,38 @@ class Neo4jMCPTools:
 
         try:
             result = await tool.ainvoke(payload)
-            # MCP returns a JSON string — parse it
             if isinstance(result, str):
                 parsed = json.loads(result)
-                # The server returns {"results": [...]} or just [...]
-                return parsed.get("results", parsed) if isinstance(parsed, dict) else parsed
+                return (
+                    parsed.get("results", parsed)
+                    if isinstance(parsed, dict)
+                    else parsed
+                )
             return result if isinstance(result, list) else []
         except Exception as exc:
-            logger.error("MCP read_cypher failed: %s | query: %s", exc, query[:200])
+            logger.error("MCP read_cypher failed: %s | query: %.200s", exc, query)
             return []
 
+    # ------------------------------------------------------------------
+    # Cleanup
+    # ------------------------------------------------------------------
+
     async def close(self) -> None:
-        """Close the MCP session gracefully."""
+        """Exit both context managers in reverse order."""
         try:
-            if hasattr(self, "_session"):
-                await self._session.close()
+            await self._session.__aexit__(None, None, None)   # stops receive loop
+            await self._cm_stdio.__aexit__(None, None, None)  # kills subprocess
+            logger.info("MCP session closed")
         except Exception as exc:
-            logger.warning("Error closing MCP session: %s", exc)
-
-
-def _start_mcp_sync(server_params: Any) -> tuple:
-    """
-    Helper to start the MCP stdio client synchronously
-    (for use inside run_in_executor).
-    This is needed because stdio_client is an async context manager
-    but we need to start it from a sync context during Streamlit init.
-    """
-    # This approach uses a dedicated event loop for the MCP connection.
-    loop = asyncio.new_event_loop()
-    return loop.run_until_complete(_start_mcp_async(server_params))
-
-
-async def _start_mcp_async(server_params: Any) -> tuple:
-    from mcp.client.stdio import stdio_client
-    # stdio_client returns (read_stream, write_stream)
-    # We enter the context manager and return the streams.
-    # The context manager keeps the subprocess alive.
-    cm = stdio_client(server_params)
-    read, write = await cm.__aenter__()
-    return read, write
+            logger.warning("MCP close error: %s", exc)
 
 
 # ---------------------------------------------------------------------------
-# Paper resolution helper (uses Neo4j directly — not via MCP)
-# Fuzzy title match using native Cypher
+# Paper resolution helper (direct Neo4j — not via MCP)
 # ---------------------------------------------------------------------------
 
 async def resolve_paper(title: str) -> list[dict]:
-    """
-    Fuzzy-match a paper title against Paper nodes in Neo4j.
-
-    Returns up to 5 candidate matches with entry_id, title, published.
-    Returns [] if nothing is found.
-    """
+    """Fuzzy-match a paper title against Paper nodes in Neo4j."""
     driver = AsyncGraphDatabase.driver(
         NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)
     )
@@ -263,10 +287,10 @@ async def resolve_paper(title: str) -> list[dict]:
                 """
                 MATCH (p:Paper)
                 WHERE toLower(p.title) CONTAINS toLower($title)
-                RETURN p.entry_id    AS entry_id,
-                       p.title       AS title,
-                       p.published   AS published,
-                       p.summary     AS summary
+                RETURN p.entry_id  AS entry_id,
+                       p.title     AS title,
+                       p.published AS published,
+                       p.summary   AS summary
                 ORDER BY p.published DESC
                 LIMIT 5
                 """,
@@ -284,7 +308,5 @@ async def resolve_paper(title: str) -> list[dict]:
     finally:
         await driver.close()
 
-    logger.info(
-        "Paper resolution for '%s': %d candidates found", title, len(records)
-    )
+    logger.info("Paper resolution for '%s': %d candidates", title, len(records))
     return records

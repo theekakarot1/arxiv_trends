@@ -1,11 +1,3 @@
-"""
-config.py
----------
-Single source of truth for all configuration.
-All environment variables, constants, and tunable parameters live here.
-Import this module everywhere — never read os.getenv() directly in other files.
-"""
-
 from __future__ import annotations
 
 import os
@@ -46,7 +38,7 @@ OPENAI_MODEL        = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 AZURE_OPENAI_API_KEY     = os.getenv("AZURE_OPENAI_API_KEY", "")
 AZURE_OPENAI_ENDPOINT    = os.getenv("AZURE_OPENAI_ENDPOINT", "")
 AZURE_OPENAI_DEPLOYMENT  = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o")
-AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
+AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
 
 # ---------------------------------------------------------------------------
 # LangSmith observability
@@ -55,7 +47,7 @@ AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
 LANGSMITH_API_KEY   = os.getenv("LANGCHAIN_API_KEY", "")
 LANGSMITH_PROJECT   = os.getenv("LANGCHAIN_PROJECT", "arxiv_trends")
 LANGSMITH_ENDPOINT  = os.getenv("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
-LANGSMITH_ENABLED   = os.getenv("LANGCHAIN_TRACING_V2", "false").lower() == "true"
+LANGSMITH_ENABLED   = os.getenv("LANGCHAIN_TRACING_V2", "true").lower() == "true"
 
 # Set the env vars LangChain checks internally
 if LANGSMITH_ENABLED:
@@ -120,5 +112,5 @@ PROVIDER_DISPLAY_NAMES = {
 PROVIDER_REQUIRED_FIELDS: dict[str, list[str]] = {
     "gemini":       ["api_key"],
     "openai":       ["api_key"],
-    "azure_openai": ["api_key", "endpoint", "deployment"],
+    "azure_openai": ["api_key", "endpoint", "deployment", "api_version"],
 }

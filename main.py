@@ -1,31 +1,14 @@
-"""
-main.py
--------
-Streamlit application entry point.
-
-Run with:
-    streamlit run app/main.py
-
-Features:
-  - Multi-provider LLM configuration with live validation
-  - LangGraph-powered query processing (semantic / cypher / hybrid)
-  - Plotly chart rendering for visualisation queries
-  - Thumbs up/down feedback per response (sent to LangSmith)
-  - Conversation memory with automatic summarisation
-  - Full observability via LangSmith tracing
-"""
-
 from __future__ import annotations
 from langsmith import Client
 import asyncio
 import logging
 import sys
 from pathlib import Path
-import concurrent.futures
+from session.tools.neo4j_mcp import Neo4jMCPTools, get_neo4j_schema, run_on_bg_loop
 import streamlit as st
 
-# Make the app/ directory importable when running from project root
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# # Make the app/ directory importable when running from project root
+# sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import (
     APP_ICON,
@@ -69,16 +52,8 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 
 def run_async(coro):
-    """Run an async coroutine from Streamlit's sync context."""
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                future = pool.submit(asyncio.run, coro)
-                return future.result()
-        return loop.run_until_complete(coro)
-    except RuntimeError:
-        return asyncio.run(coro)
+    """Run any coroutine on the shared background loop."""
+    return run_on_bg_loop(coro)
 
 
 # ---------------------------------------------------------------------------
@@ -87,13 +62,12 @@ def run_async(coro):
 
 @st.cache_resource(show_spinner="Connecting to Neo4j MCP server…")
 def get_mcp_tools() -> Neo4jMCPTools | None:
-    """Start the MCP server subprocess and load tools. Cached for the session."""
     try:
-        tools = run_async(Neo4jMCPTools.create())
+        tools = Neo4jMCPTools.create()   # sync — no run_async wrapper needed
         logger.info("MCP tools initialised")
         return tools
     except Exception as exc:
-        logger.error("Failed to initialise MCP tools: %s", exc)
+        logger.error("Failed to initialise MCP tools: %s", exc_info=True)
         return None
 
 
@@ -183,7 +157,8 @@ def render_sidebar():
                     provider=provider,
                     api_key=field_values.get("api_key", ""),
                     endpoint=field_values.get("endpoint", ""),
-                    deployment=field_values.get("deployment", ""),
+                    model=field_values.get("deployment", ""),
+                    api_version=field_values.get("api_version", ""),
                     validate=True,
                 )
 

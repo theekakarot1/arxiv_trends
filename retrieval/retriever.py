@@ -1,17 +1,3 @@
-"""
-retriever.py
-------------
-Vector search against the Neo4j chunk-embeddings index.
-Returns the top-k candidate chunks for a given user query.
-
-Provides two interfaces:
-  get_chunks_from_neo4j()        — synchronous, uses the existing neo4j driver
-                                   (kept for backward compatibility)
-  get_chunks_from_neo4j_async()  — async, used by the LangGraph app nodes
-  get_chunks_filtered_async()    — async, scoped to a list of paper entry_ids
-                                   (used in the hybrid citation path)
-"""
-
 from __future__ import annotations
 
 import logging
